@@ -1,0 +1,142 @@
+work_dir: /data/tf32_diff_gvit_withattn_rsd46_32_32_0.0001
+gpus_id: [0,1]
+local_rank:
+rank: 0
+use_wandb: False
+use_context_method:
+save_per_epochs: 30
+num_classes: 47
+tb_log_dir: tb_log
+mode: train
+distributed: True
+task_name: pretrained
+cudnn_benchmark: True
+type: generate
+logging_step: 100
+using_multi_stage_optimizer: False
+use_fp16: False
+init_scale: 16
+accumulate_steps: 1
+ema_rate: 0.9999
+monitor: loss
+generator:
+  name: SpacedDiffuser
+  use_ddim: True
+  diffusion_steps: 1000
+  eval_steps: 20
+  schedule_type: cosine
+  model_mean_type: epsilon
+  model_var_type: fixed_small
+  loss_type: MSELoss
+  learn_sigma: True
+  use_class_guide: False
+
+model:
+  name: gViT
+  is_finetuning: False
+  pretrained: False
+  init_mode:
+  pretrained_path:
+  load_from:
+  checkpoint_path: ckpt
+  results_path:
+  resume_state:
+  resume_path:
+
+data:
+  fold_path:
+  fold: 0
+  root_path: /data/RSD46_feature_8x
+  images_path: val
+  labels_path: train
+  name: RSD46feature
+  batches: 1
+  train_dataset:
+    image_size: 32
+    batch_size: 16
+    channels: 4
+    num_worker: 16
+    pin_memory: True
+    drop_last: False
+    use_shuffle: True
+    transform: B_trans
+  val_dataset:
+    image_size: 32
+    batch_size: 8
+    num_worker: 16
+    pin_memory: True
+    drop_last: True
+    use_shuffle: True
+    transform: A_trans
+
+training:
+  grad_norm_clip: -100000.0
+  loss:
+    generate:
+      name: MSELoss
+      init_params:
+
+    mask:
+      name: MSELoss
+      init_params:
+    classification:
+      name: MSELoss
+      init_params:
+    bbox:
+      name: MSELoss
+      init_params:
+    vector:
+
+  metrics:
+    generate:
+      name: []
+
+
+    mask:
+      name: MSELoss
+      init_params:
+    classification:
+      name: mAP
+      init_params:
+    bbox:
+      name: MSELoss
+      init_params:
+    vector:
+
+  optimizer:
+    name: AdamW
+    init_params:
+      lr: 0.00005
+      weight_decay: 0.03
+#      eps: 0.00001
+      betas: [0.99, 0.99]
+
+  multi_stage_optimizer:
+    name: SGD
+    init_params:
+      backbone:
+        lr: 0.00001
+      decoder:
+      lr: 0.00001
+
+#  scheduler:
+#    name: CosineAnnealingLR
+#    init_params:
+#      T_max: 600
+#      eta_min: 0.00003
+
+  scheduler:
+    name: CosineAnnealingWithWarmUpLR
+    init_params:
+      T_max: 600
+      eta_min: 0.00001
+      lr_max: 0.00005
+      warm_up: 0.01
+
+  fit:
+    mode: by-epoch
+    epochs: 500
+    eval_epochs: 5
+    gen_epochs: 5
+    steps: 100000
+    eval_steps: 1000
